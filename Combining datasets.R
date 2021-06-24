@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 
 setwd("C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance modeling/Bethany datasets")
+setwd("~/Desktop/OneDrive - University of Massachusetts/Abundance modeling/Bethany datasets")
 
 ## Reading in datasets one at a time
 
@@ -122,7 +123,13 @@ table(all$CoverType) # cool!
 all = all %>% mutate(PA = ifelse(Cover=="Absent", "Absence", "Presence"))
 table(all$PA)
 
+# cover measurements that exceed 100%
+all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
+  filter(Cover > 100) %>% distinct(Dataset)
+all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
+  filter(Cover > 100) %>% filter(Dataset=="NEON") # only one plot in NEON
+
 # export an nceas merged datasets
 nceas = rbind(nps_sub, blm_sub, fia_sub, neon_sub)
 head(nceas)
-write.csv(nceas, "Latest_BLM_NPS_NEON_FIA_introduced.csv", row.names=F)
+# write.csv(nceas, "Latest_BLM_NPS_NEON_FIA_introduced.csv", row.names=F)
