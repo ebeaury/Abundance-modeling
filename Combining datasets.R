@@ -8,8 +8,7 @@ library(ggplot2)
 setwd("C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance modeling/Bethany datasets")
 setwd("~/Desktop/OneDrive - University of Massachusetts/Abundance modeling/Bethany datasets")
 
-## Reading in datasets one at a time
-
+## Reading in abundance datasets one at a time
 veg = read.csv("All_VegBank_KPEACH_EB_reduced.csv")
 edd_cov = read.csv("EDDMaps_pctcov_11_17_2020_cleaned.csv")
 edd_class = read.csv("EDDMaps_covclass_11_17_2020_cleaned.csv")
@@ -24,8 +23,11 @@ nps = read.csv("NPS.AllSpTraits_21April2021.csv")
 blm = read.csv("AIM_AllSpTax_24June2020.csv")
 fia = read.csv("FIA Veg data Latest Traits 8-4-20.csv")
 neon = read.csv("NEONdata_flatted20210225traits.csv")
+misin = read.csv("MISIN_intro_qualitative.csv")
+nas = read.csv("NAS_stemcount_intro_cleaned.csv")
+gl = read.csv("GLIFWC_stemcount_intro_cleaned.csv")
 
-## Reformating to matching columns and different types of cover measurements
+## Reformating abundance data to matching columns and different types of cover measurements
 # vegbank
 glimpse(veg)
 veg_sub = veg %>% filter(ExoticStatus=="I", PctCov > 0) %>%
@@ -80,11 +82,16 @@ glimpse(vahnp_sub)
 range(vahnp_sub$Cover)
 # nps
 glimpse(nps)
-nps_sub = nps %>% filter(Exotic=="I") %>%
-  select(UniqueID, Dataset, Long, Lat, Species, Pct_Cov) %>%
-  rename(Cover=Pct_Cov, SpCode = Species) %>% mutate(CoverType = "PercentCover") %>% distinct()
+# fix absolute cover to be relative cover
+nps_sub = nps %>% group_by(UniqueID) %>% summarise(TotalPlotCover = sum(Pct_Cov)) %>%
+  left_join(nps) %>% mutate(RelCov = Pct_Cov / TotalPlotCover) %>%
+  filter(Exotic=="I") %>%
+  select(UniqueID, Dataset, Long, Lat, Species, RelCov) %>%
+  rename(Cover=RelCov, SpCode = Species) %>% mutate(CoverType = "PercentCover", Cover = Cover*100) %>% 
+  distinct()
 glimpse(nps_sub)
 range(nps_sub$Cover)
+max(nps_sub$Cover)
 # fia
 glimpse(fia)
 fia_sub = fia %>% mutate(Dataset="FIA", UniqueID = paste("FIA", PLOT, sep="_")) %>% filter(inv_L48=="I") %>%
@@ -107,27 +114,79 @@ neon_sub = neon %>% filter(Native.Status=="I") %>%
   rename(Dataset=dataset, Long = decimalLongitude, Lat = decimalLatitude, SpCode=Accepted.Symbol, Cover=totalcover_sum, UniqueID = plotID)
 glimpse(neon_sub)
 range(neon_sub$Cover)
+# misin
+glimpse(misin)
+misin_sub = misin %>% rename(Cover=Qualitative) %>% mutate(CoverType = "Qualitative")
+unique(misin_sub$Cover)
+# nas
+glimpse(nas)
+nas_sub = nas %>% select(-StemCount.Range) %>% rename(Cover = StemCount.Avg) %>%
+  mutate(CoverType = "MeanStemCount")
+# gl
+glimpse(gl)
+gl_sub = gl %>% select(-StemCount.Range) %>% rename(Cover = StemCount.Avg) %>%
+  mutate(CoverType = "MeanStemCount")
+
+## Read in additional presence points
+edd_pres = read.csv("EDDMaps_allpts_11_17_2020.csv")
+# impa_pres = read.csv("iMap_all_occurrences_4_30_2021.csv")
+gl_pres = read.csv("GLIFWC_all_intro_cleaned.csv")
+fl_pres = read.csv("FLINV_all_occurrences_2011.csv")
+nas_pres = read.csv("NAS_all_intro_cleaned.csv")
+misin_pres = read.csv("MISIN_all_intro.csv")
+
+## Clean these up to match abundance points
+glimpse(edd_pres)
+edd_pres_sub = edd_pres %>% select(Latitude.Decimal, Longitude.Decimal, SpCode, Dataset) %>%
+  rename(Lat = Latitude.Decimal, Long = Longitude.Decimal) %>%
+  mutate(Cover = NA, CoverType = "PresenceOnly") %>% distinct()
+edd_pres_sub = edd_pres_sub %>% mutate(UniqueID = paste0("EDDPresence", 1:nrow(edd_pres_sub))) %>% distinct()
+glimpse(edd_pres_sub)
+# gl
+glimpse(gl_pres)
+gl_pres_sub = gl_pres %>% select(-StemCount) %>% 
+  mutate(Cover = NA, CoverType = "PresenceOnly")%>% distinct()
+# fl
+glimpse(fl_pres)
+fl_pres_sub = fl_pres %>% select(-CovClass, -Year) %>% 
+  mutate(Cover=NA, CoverType = "PresenceOnly")%>% distinct()
+# nas
+glimpse(nas_pres)
+nas_pres_sub = nas_pres %>% select(UniqueID, Dataset, Long, Lat, SpCode) %>%
+  mutate(Cover=NA, CoverType = "PresenceOnly") %>% distinct()
+# misin
+glimpse(misin_pres)
+unique(misin_pres$Qualitative)
+misin_pres_sub = misin_pres %>% filter(is.na(Qualitative)) %>% rename(Cover=Qualitative) %>%
+  mutate(CoverType="PresenceOnly") %>% distinct()
 
 ## merge
 all = rbind(edd_class_sub, edd_cov_sub, edd_qual_sub, fl_sub, il_sub, imap_sub, nwca_sub, tx_sub, vahnp_sub, veg_sub,
-            nps_sub, fia_sub, blm_sub, neon_sub)
+            nps_sub, fia_sub, blm_sub, neon_sub, misin_sub, nas_sub, gl_sub, edd_pres_sub, gl_pres_sub,
+            fl_pres_sub, misin_pres_sub, nas_pres_sub)
 unique(all$Dataset)
+table(all$CoverType)
 
 # make 0% cover measures and 'none' qualitative measures absences
-all$Cover[all$Cover==0] <- "Absent"
-all$Cover[all$Cover=="None"] <- "Absent"
+all$CoverType[all$Cover==0] <- "AbsenceOnly"
+all$CoverType[all$Cover=="None"] <- "AbsenceOnly"
 head(all)
 table(all$CoverType) # cool!
 
 # add a column distinguishing presence and absence
-all = all %>% mutate(PA = ifelse(Cover=="Absent", "Absence", "Presence"))
+all = all %>% mutate(PA = ifelse(CoverType=="AbsenceOnly", "Absence", "Presence"))
 table(all$PA)
 
-# cover measurements that exceed 100%
+# are there cover measurements that exceed 100%?
 all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
   filter(Cover > 100) %>% distinct(Dataset)
 all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
   filter(Cover > 100) %>% filter(Dataset=="NEON") # only one plot in NEON
+# drop weird NEON plot
+all2 = all %>% filter(!(UniqueID == "OAES_008" & SpCode == "BOBL"))
+
+# export a merged dataset
+#write.csv(all2, "MergedDatasets_24June2021_EB.csv", row.names=F)
 
 # export an nceas merged datasets
 nceas = rbind(nps_sub, blm_sub, fia_sub, neon_sub)
