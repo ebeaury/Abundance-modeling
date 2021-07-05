@@ -9,7 +9,6 @@ setwd("C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance modelin
 setwd("~/Desktop/OneDrive - University of Massachusetts/Abundance modeling/Bethany datasets")
 
 ## Reading in abundance datasets one at a time
-#veg = read.csv("All_VegBank_KPEACH_EB_reduced.csv")
 calclass = read.csv("Calflora_covclass_28June2021_cleaned.csv")
 calqual = read.csv("Calflora_qualitative_28June2021_cleaned.csv")
 calcov = read.csv("Calflora_pctcov_28June2021_cleaned.csv")
@@ -24,24 +23,14 @@ imap_class = read.csv("iMap_avg_covclass_4_30_2021.csv")
 nceas = read.csv("Latest_BLM_NPS_NEON_FIA_introduced.csv")
 misin = read.csv("MISIN_intro_qualitative.csv")
 nas = read.csv("NAS_stemcount_intro_cleaned.csv")
-ncvs_new = read.csv("NCVS_introduced.csv")
-ncvs_old =read.csv("All_VegBank_KPEACH_EB_reduced.csv")
-
+ncvs_all = read.csv("NCVS_introduced.csv")
+ncvs_wv =read.csv("NCVS_WV_EB_5July2021.csv")
+ncvs_va = read.csv("NCVS_VA_introduced.csv")
 nwca = read.csv("NWCA_all_introduced_2011.csv")
-tx = read.csv("TX_all_occurrences_5_22_2021.csv")
-#vahnp = read.csv("VANHP_reduced_06_16_21_EB.csv")
-#nps = read.csv("NPS.AllSpTraits_21April2021.csv")
-#blm = read.csv("AIM_AllSpTax_24June2020.csv")
-#fia = read.csv("FIA Veg data Latest Traits 8-4-20.csv")
-#neon = read.csv("NEONdata_flatted20210225traits.csv")
+tx = read.csv("TX_qualitative_5_22_2021.csv")
+vegbank = read.csv("Vegbank_intro_cleaned.csv")
 
 ## Reformating abundance data to matching columns and different types of cover measurements
-# vegbank
-glimpse(veg)
-veg_sub = veg %>% filter(ExoticStatus=="I", PctCov > 0) %>%
-  select(UniqueID, Dataset, Lat, Long, SpCode, PctCov) %>%
-  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover")
-range(veg_sub$Cover)
 # cal flora
 glimpse(calclass)
 calclass_sub = calclass %>% distinct() %>% rename(Cover = CovClass) %>%
@@ -54,34 +43,31 @@ calcov_sub = calcov %>% distinct() %>% rename(Cover = PctCov) %>%
   mutate(CoverType = "PercentCover")
 # eddmaps
 glimpse(edd_cov)
-edd_cov_sub = edd_cov %>% distinct() %>% rename(Long = Longitude.Decimal, Lat = Latitude.Decimal, Cover = PctCov) %>%
+edd_cov_sub = edd_cov %>% distinct() %>% rename(Cover = PctCov) %>%
   mutate(CoverType="PercentCover")
 range(edd_cov_sub$Cover)
-edd_cov_sub = edd_cov_sub %>% mutate(UniqueID = paste0("EDDCover",seq(1:nrow(edd_cov_sub))))
 glimpse(edd_cov_sub)
 glimpse(edd_class)
-edd_class_sub = edd_class %>% distinct() %>% rename(Long = Longitude.Decimal, Lat = Latitude.Decimal, Cover = CovClass) %>%
-  mutate(CoverType="CoverClass")
+edd_class_sub = edd_class %>% distinct() %>% rename(Cover = AvgCovClass) %>%
+  mutate(CoverType="AvgCoverClass")
 unique(edd_class_sub$Cover)
-edd_class_sub = edd_class_sub %>% mutate(UniqueID = paste0("EDDCClass",seq(1:nrow(edd_class_sub))))
 glimpse(edd_qual)
-edd_qual_sub = edd_qual %>% rename(Long = Longitude.Decimal, Lat = Latitude.Decimal, Cover = Qualitative) %>%
+edd_qual_sub = edd_qual %>% rename(Cover = Qualitative) %>%
   mutate(CoverType="Qualitative")
-edd_qual_sub = edd_qual_sub %>% mutate(UniqueID = paste0("EDDCQual", seq(1:nrow(edd_qual_sub))))
 unique(edd_qual_sub$Cover)
 # florida
 glimpse(fl)
 fl_sub = fl %>% distinct() %>% rename(Cover = AvgCovClass) %>% mutate(CoverType = "AvgCoverClass")
 unique(fl_sub$Cover)
-# il
-glimpse(il)
-il_sub = il %>% distinct() %>% filter(!is.na(PctCov)) %>%
-  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover")
 # gl
 glimpse(gl)
 gl_sub = gl %>% select(-StemCount.Range) %>% rename(Cover = StemCount.Avg) %>%
-  mutate(CoverType = "MeanStemCount")
-
+  mutate(CoverType = "AvgStemCount")
+# il
+glimpse(il)
+il_sub = il %>% distinct() %>%
+  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover")
+il_sub$CoverType[is.na(il_sub$Cover)] <- "PresenceOnly"
 # imap
 glimpse(imap_cov)
 imap_sub = imap_cov %>% distinct() %>%
@@ -91,56 +77,8 @@ glimpse(imap_class)
 unique(imap_class$AvgCovClass)
 imap_class_sub = imap_class %>% distinct() %>% select(-CovClass) %>%
   rename(Cover = AvgCovClass) %>% mutate(CoverType = "AvgCoverClass")
-# nwca
-glimpse(nwca)
-nwca_sub = nwca %>% distinct() %>% filter(!is.na(PctCov)) %>%
-  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover")
-range(nwca_sub$Cover)
-# tx
-glimpse(tx)
-tx_sub = tx %>% distinct() %>% select(-Time_Spent, -Disturbance) %>% rename(Cover=Qualitative) %>%
-  mutate(CoverType="Qualitative")
-unique(tx_sub$Cover)
-#vanhp
-glimpse(vahnp)
-vahnp_sub = vahnp %>% filter(ExoticStatus=="I") %>% select(UniqueID, Dataset, Long, Lat, SpCode, PctCov) %>%
-  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover") %>% distinct()
-glimpse(vahnp_sub)
-range(vahnp_sub$Cover)
-# nps
-glimpse(nps)
-# fix absolute cover to be relative cover
-nps_sub = nps %>% group_by(UniqueID) %>% summarise(TotalPlotCover = sum(Pct_Cov)) %>%
-  left_join(nps) %>% mutate(RelCov = Pct_Cov / TotalPlotCover) %>%
-  filter(Exotic=="I") %>%
-  select(UniqueID, Dataset, Long, Lat, Species, RelCov) %>%
-  rename(Cover=RelCov, SpCode = Species) %>% mutate(CoverType = "PercentCover", Cover = Cover*100) %>% 
-  distinct()
-glimpse(nps_sub)
-range(nps_sub$Cover)
-max(nps_sub$Cover)
-# fia
-glimpse(fia)
-fia_sub = fia %>% mutate(Dataset="FIA", UniqueID = paste("FIA", PLOT, sep="_")) %>% filter(inv_L48=="I") %>%
-  select(UniqueID, Dataset, LON, LAT, VEG_SPCD, PlotCover) %>%
-  rename(Cover=PlotCover, Long = LON, Lat = LAT, SpCode =VEG_SPCD) %>% mutate(CoverType = "PercentCover") %>% distinct()
-glimpse(fia_sub)
-range(fia_sub$Cover)
-# blm
-glimpse(blm)
-blm_sub = blm %>% mutate(Dataset = DataSet, UniqueID = PLOTKEY, Cover = prop.cover*100) %>%
-  select(UniqueID, Dataset, NAD83.Y, NAD83.X, code, Cover) %>%
-  rename(SpCode=code, Long = NAD83.X, Lat = NAD83.Y) %>% mutate(CoverType = "PercentCover") %>% distinct()
-glimpse(blm_sub)
-range(blm_sub$Cover)
-# neon
-glimpse(neon)
-neon_sub = neon %>% filter(Native.Status=="I") %>%
-  select(dataset,plotID, decimalLongitude,decimalLatitude, Accepted.Symbol,totalcover_sum,) %>%
-  mutate(CoverType = "PercentCover") %>% 
-  rename(Dataset=dataset, Long = decimalLongitude, Lat = decimalLatitude, SpCode=Accepted.Symbol, Cover=totalcover_sum, UniqueID = plotID)
-glimpse(neon_sub)
-range(neon_sub$Cover)
+# nceas
+glimpse(nceas) # good to go
 # misin
 glimpse(misin)
 misin_sub = misin %>% rename(Cover=Qualitative) %>% mutate(CoverType = "Qualitative")
@@ -148,33 +86,42 @@ unique(misin_sub$Cover)
 # nas
 glimpse(nas)
 nas_sub = nas %>% select(-StemCount.Range) %>% rename(Cover = StemCount.Avg) %>%
-  mutate(CoverType = "MeanStemCount")
-# cal flora
-
+  mutate(CoverType = "AvgStemCount")
 # ncvs
-glimpse(ncvs_new)
-glimpse(ncvs_old)
-unique(ncvs_old$Dataset)
-# clean up NCVS data from Kristen's pull
-ncvs_old2 = ncvs_old %>% filter(Dataset=="NCVS_WV") %>% 
-  select(UniqueID, Long, Lat, SpCode, PctCov) %>% distinct() %>%
-  mutate(Dataset="NCVS")
-head(ncvs_old2)
-# combine with NCVS data on google drive and drop duplicates
-ncvs_sub = rbind(ncvs_new, ncvs_old2) %>% distinct() %>% rename(Cover=PctCov) %>%
-  mutate(CoverType="PercentCover")
+glimpse(ncvs_all)
+glimpse(ncvs_wv)
+glimpse(ncvs_va)
+ncvs_sub = rbind(ncvs_all, ncvs_va,ncvs_wv %>% select(-X)) %>%
+  rename(Cover=PctCov) %>% mutate(CoverType="PercentCover") %>% distinct()
 glimpse(ncvs_sub)
-# export NCVS_WV to match format for other data
-write.csv(ncvs_old2, "NCVS_WV_EB_5July2021.csv")
+# nwca
+glimpse(nwca)
+nwca_sub = nwca %>% distinct() %>%
+  rename(Cover = PctCov) %>% mutate(CoverType = "PercentCover")
+nwca_sub$CoverType[is.na(nwca_sub$Cover)] <- "PresenceOnly"
+range(nwca_sub$Cover, na.rm=T)
+# tx
+glimpse(tx)
+tx_sub = tx %>% distinct() %>% rename(Cover=Qualitative) %>%
+  mutate(CoverType="Qualitative")
+unique(tx_sub$Cover)
+tx_sub %>% filter(is.na(Cover))
+tx_sub$CoverType[is.na(tx_sub$Cover)] <- "PresenceOnly"
+# vegbank
+glimpse(vegbank)
+veg_bank_sub = vegbank %>% rename(Cover=PctCov) %>% mutate(CoverType="PercentCover")
+range(veg_bank_sub$Cover)
 
 ## Read in additional presence points
-edd_pres = read.csv("EDDMaps_allpts_11_17_2020.csv")
-impa_pres = read.csv("iMap_all_occurrences_4_30_2021.csv")
-gl_pres = read.csv("GLIFWC_all_intro_cleaned.csv")
-fl_pres = read.csv("FLINV_all_occurrences_2011.csv")
-nas_pres = read.csv("NAS_all_intro_cleaned.csv")
-misin_pres = read.csv("MISIN_all_intro.csv")
 calflor = read.csv("all.points.calflora.selected_28June2021_cleaned.csv")
+edd_pres = read.csv("EDDMaps_allpts_11_17_2020.csv")
+fl_pres = read.csv("FLINV_all_occurrences_2011.csv")
+gl_pres = read.csv("GLIFWC_all_intro_cleaned.csv")
+imap_pres = read.csv("iMap_all_occurrences_4_30_2021.csv")
+misin_pres = read.csv("MISIN_all_intro.csv")
+nas_pres = read.csv("NAS_all_intro_cleaned.csv")
+nwca_pres = read.csv("NWCA_all_introduced_2011.csv")
+tx_pres = read.csv("TX_all_occurrences_5_22_2021.csv")
 
 ## Clean these up to match abundance points
 glimpse(edd_pres)
