@@ -57,7 +57,8 @@ edd_qual_sub = edd_qual %>% rename(Cover = Qualitative) %>%
 unique(edd_qual_sub$Cover)
 # florida
 glimpse(fl)
-fl_sub = fl %>% distinct() %>% rename(Cover = AvgCovClass) %>% mutate(CoverType = "AvgCoverClass")
+fl_sub = fl %>% distinct() %>% select(-CovClass) %>%
+  rename(Cover = AvgCovClass) %>% mutate(CoverType = "AvgCoverClass")
 unique(fl_sub$Cover)
 # gl
 glimpse(gl)
@@ -124,36 +125,65 @@ nwca_pres = read.csv("NWCA_all_introduced_2011.csv")
 tx_pres = read.csv("TX_all_occurrences_5_22_2021.csv")
 
 ## Clean these up to match abundance points
+# cal
+glimpse(calflor)
+cal_sub = calflor %>% filter(is.na(Qualitative) & is.na(PctCov) & is.na(CovClass)) %>%
+  distinct() %>% select(UniqueID, Dataset, Long, Lat, SpCode) %>%
+  mutate(Cover=NA, CoverType = "PresenceOnly") %>% distinct()
+glimpse(cal_sub)
+# edd
 glimpse(edd_pres)
-edd_pres_sub = edd_pres %>% select(UniqueID, Lat, Long, SpCode, Dataset) %>%
+edd_pres_sub = edd_pres %>% filter(is.na(Qualitative) & is.na(PctCov) & is.na(AvgCovClass)) %>%
+  select(UniqueID, Lat, Long, SpCode, Dataset) %>%
   mutate(Cover = NA, CoverType = "PresenceOnly") %>% distinct()
 glimpse(edd_pres_sub)
+# fl
+glimpse(fl_pres)
+unique(fl_pres$CovClass)
+fl_pres_sub = fl_pres %>% filter(CovClass=="ZZ") %>%
+  select(-CovClass, -Year) %>% 
+  mutate(Cover=NA, CoverType = "PresenceOnly")%>% distinct()
+# gl
+glimpse(gl_pres)
+unique(gl_pres$StemCount)
+gl_pres_sub = gl_pres %>% filter(StemCount==" ") %>%
+  select(-StemCount) %>% 
+  mutate(Cover = NA, CoverType = "PresenceOnly")%>% distinct()
 # imap
 glimpse(impa_pres)
 impa_pres_sub = impa_pres %>% filter(PctCov=="NULL" & CovClass == "NULL") %>%
   select(-PctCov, -CovClass) %>% mutate(Cover = NA, CoverType = "PresenceOnly") %>% distinct()
-# gl
-glimpse(gl_pres)
-gl_pres_sub = gl_pres %>% select(-StemCount) %>% 
-  mutate(Cover = NA, CoverType = "PresenceOnly")%>% distinct()
-# fl
-glimpse(fl_pres)
-fl_pres_sub = fl_pres %>% select(-CovClass, -Year) %>% 
-  mutate(Cover=NA, CoverType = "PresenceOnly")%>% distinct()
-# nas
-glimpse(nas_pres)
-nas_pres_sub = nas_pres %>% select(UniqueID, Dataset, Long, Lat, SpCode) %>%
-  mutate(Cover=NA, CoverType = "PresenceOnly") %>% distinct()
 # misin
 glimpse(misin_pres)
 unique(misin_pres$Qualitative)
 misin_pres_sub = misin_pres %>% filter(is.na(Qualitative)) %>% rename(Cover=Qualitative) %>%
   mutate(CoverType="PresenceOnly") %>% distinct()
+# nas
+glimpse(nas_pres)
+unique(nas_pres$StemCount)
+nas_pres_sub = nas_pres %>% filter(StemCount=="NULL" | StemCount=="") %>%
+  select(UniqueID, Dataset, Long, Lat, SpCode) %>%
+  mutate(Cover=NA, CoverType = "PresenceOnly") %>% distinct()
+# nwca
+glimpse(nwca_pres)
+unique(nwca_pres$PctCov)
+nwca_pres_sub = nwca_pres %>% filter(is.na(PctCov)) %>%
+  rename(Cover = PctCov) %>% mutate(CoverType = "PresenceOnly") %>% distinct()
+# tx
+glimpse(tx_pres)
+unique(tx_pres$Qualitative)
+tx_pres_sub = tx_pres %>% filter(Qualitative=="" | Qualitative=="None") %>%
+  select(UniqueID, Dataset, Long, Lat, SpCode, Qualitative) %>%
+  rename(Cover = Qualitative) %>%
+  mutate(CoverType = ifelse(Cover=="None", "AbsenceOnly", "PresenceOnly")) %>%
+  distinct()
+table(tx_pres_sub$CoverType)
 
 ## merge
-all = rbind(edd_class_sub, edd_cov_sub, edd_qual_sub, fl_sub, il_sub, imap_sub, nwca_sub, tx_sub, vahnp_sub, veg_sub,
-            nps_sub, fia_sub, blm_sub, neon_sub, misin_sub, nas_sub, gl_sub, edd_pres_sub, gl_pres_sub,
-            fl_pres_sub, misin_pres_sub, nas_pres_sub, impa_pres_sub)
+all = rbind(cal_sub, calclass_sub, calcov_sub, calqual_sub, edd_class_sub, edd_cov_sub,edd_pres_sub,
+            edd_qual_sub, fl_pres_sub, fl_sub, gl_pres_sub, gl_sub, il_sub, imap_class_sub, imap_sub,
+            impa_pres_sub, misin_pres_sub, misin_sub, nas_pres_sub,nas_sub,nceas, ncvs_sub, nwca_pres_sub,
+            nwca_sub, tx_pres_sub, tx_sub, veg_bank_sub)
 unique(all$Dataset)
 table(all$CoverType)
 
@@ -163,28 +193,16 @@ all$CoverType[all$Cover=="None"] <- "AbsenceOnly"
 head(all)
 table(all$CoverType) # cool!
 
-all2 # add a column distinguishing presence and absence
-all = all %>% mutate(PA = ifelse(CoverType=="AbsenceOnly", "Absence", "Presence"))
-table(all$PA)
+# add a column distinguishing presence and absence
+all2 = all %>% mutate(PA = ifelse(CoverType=="AbsenceOnly", "Absence", "Presence"))
+table(all2$PA)
 
 # are there cover measurements that exceed 100%?
-all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
+all2 %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
   filter(Cover > 100) %>% distinct(Dataset)
-all %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
-  filter(Cover > 100) %>% filter(Dataset=="NEON") # only one plot in NEON
-# drop weird NEON plot
-all2 = all %>% filter(!(UniqueID == "OAES_008" & SpCode == "BOBL"))
+all2 %>% filter(CoverType=="PercentCover") %>% mutate(Cover = as.numeric(Cover)) %>%
+  filter(Cover > 100) # only one plot in NEON, but a bunch of NCVS plots
+# leave for now
 
 # export a merged dataset
-#write.csv(all2, "MergedDatasets_24June2021_EB.csv", row.names=F)
-
-# add a column distinguishing presence, absence and abundance?
-all2 = all2 %>% mutate(Type = ifelse(CoverType=="AbsenceOnly", "Absence",
-                                     ifelse(CoverType == "PresenceOnly", "Presence", "Abundance")))
-table(all2$Type)
-unique(all2$CoverType)
-
-# export an nceas merged datasets
-nceas = rbind(nps_sub, blm_sub, fia_sub, neon_sub)
-head(nceas)
-# write.csv(nceas, "Latest_BLM_NPS_NEON_FIA_introduced.csv", row.names=F)
+#write.csv(all2, "MergedDatasets_5July2021_EB.csv", row.names=F)
