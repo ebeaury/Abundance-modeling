@@ -157,7 +157,8 @@ out.wd = "C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance mode
 
 list.files()
 # for now, only pull in datasets that are uploaded through drive
-files = c("Americas_N_LCM_Cat100.tif", "awc_mean_0_5_integer.tif", "ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif")
+files = c("Americas_N_LCM_Cat100.tif", "awc_mean_0_5_integer.tif", "ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif",
+          "VCF_percent_treeCover_2000_2016_mean_integer.tif")
 #files = list.files()[c(1:3,5:7)]
 for(f in files){
   assign(paste0(f), raster(paste0(out.wd, "/", f)))
@@ -168,7 +169,8 @@ for(f in files){
 
 head(dat)
 pctj = as.data.frame(dat) %>% rename(humanfoot = Americas_N_LCM_Cat100.tif, watercontent = awc_mean_0_5_integer.tif,
-                                     eta = ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif)
+                                     eta = ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif, 
+                                     treecover = VCF_percent_treeCover_2000_2016_mean_integer.tif)
 glimpse(pctj)
 hist(pctj$humanfoot)
 hist(pctj$eta)
@@ -180,6 +182,7 @@ pctj = pctj %>% mutate(Point = factor(Point, levels = c("Presence", "Abundance")
 pctj %>% ggplot(aes(humanfoot, fill=Point)) + geom_histogram(alpha=0.5) # wow!
 pctj %>% ggplot(aes(watercontent, fill=Point)) + geom_histogram(alpha=0.5)
 pctj %>% ggplot(aes(eta, fill=Point)) + geom_histogram(alpha=0.5)
+pctj %>% ggplot(aes(treecover, fill=Point)) + geom_histogram(alpha=0.5)
 
 ## What if we set some abundance thresholds?
 all = pctj %>% mutate(Value = "AllData")
@@ -195,7 +198,12 @@ newpct %>% ggplot(aes(watercontent, fill=Value)) + geom_histogram(alpha=0.7) +
   ggtitle("Data set at 10% and 20% thresholds")
 newpct %>% ggplot(aes(eta, fill=Value)) + geom_histogram(alpha=0.7) +
   ggtitle("Data set at 10% and 20% thresholds")
+newpct %>% ggplot(aes(treecover, fill=Value)) + geom_histogram(alpha=0.7) +
+  ggtitle("Data set at 10% and 20% thresholds")
 
-## Two dimensional enviro space...?
-newpct %>% ggplot(aes(humanfoot, eta)) + geom_point()
+## How do predictors relate to continuous cover?
+pctj %>% filter(Point=="Abundance") %>% ggplot(aes(humanfoot, as.numeric(Cover))) + geom_point() + geom_smooth()
+pctj %>% filter(Point=="Abundance") %>% ggplot(aes(eta, as.numeric(Cover))) + geom_point() + geom_smooth() # weird 0s?
+pctj %>% filter(Point=="Abundance") %>% ggplot(aes(watercontent, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
+pctj %>% filter(Point=="Abundance") %>% ggplot(aes(treecover, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
 
