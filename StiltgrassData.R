@@ -130,24 +130,72 @@ ggplot(states, aes(long, lat, group = group)) +
                fill="#238b45") +
   ggtitle("All points vs. cover > 50%")
 
-
 ## Presence vs absence
 ggplot(states, aes(long, lat, group = group)) + 
   geom_polygon(fill = "white", colour = "black") + 
   geom_point(data = mv, aes(Long, Lat, color=PA), pch=16, size=2.5, inherit.aes = FALSE) +
-  xlim(-105,-67) + ylim(24,51) + xlab("Longitude") + ylab("Latitude") +
-  facet_wrap(~PA)
+  xlim(-101,-67) + ylim(25,50) + xlab("Longitude") + ylab("Latitude") +
+  facet_wrap(~PA) + theme(legend.position = "none")
 
+## Pull in environmental data!
+library(raster)
+library(maptools)
 
-## Export
-setwd("~/Desktop/OneDrive - University of Massachusetts/Abundance modeling/Microstegium")
-head(mv)
-mv_ex = mv %>% filter(!is.na(Long), !is.na(Lat))
+# Make a new cover dataset
+dat = rbind(mv %>% filter(CoverType == "PresenceOnly"), pct) %>%
+  mutate(Point = ifelse(CoverType=="PresenceOnly", "Presence", "Abundance"))
+head(dat)
 
-write.csv(mv_ex, "MV_allpoints.csv", row.names=F)
+# Make data spatial
+coordinates(dat) <- ~ Long + Lat
+proj4string(dat) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+dat
 
-pct = mv %>% filter(!is.na(Long), !is.na(Lat), CoverType=="PercentCover")
-write.csv(pct, "MV_pctcov.csv", row.names=F)  
+# Pull rasters
+setwd("C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance modeling/Microstegium/EnviroData")
+out.wd = "C:/Users/ebeaury/OneDrive - University of Massachusetts/Abundance modeling/Microstegium/EnviroData"
 
-presence = mv %>% filter(!is.na(Long), !is.na(Lat), PA=="Presence")
-write.csv(presence, "MV_presenceonly.csv", row.names=F)
+list.files()
+# for now, only pull in datasets that are uploaded through drive
+files = c("Americas_N_LCM_Cat100.tif", "awc_mean_0_5_integer.tif", "ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif")
+#files = list.files()[c(1:3,5:7)]
+for(f in files){
+  assign(paste0(f), raster(paste0(out.wd, "/", f)))
+  a <- as.data.frame(extract(get(f), dat))
+  colnames(a) <- f
+  dat <- spCbind(dat, a)
+}
+
+head(dat)
+pctj = as.data.frame(dat) %>% rename(humanfoot = Americas_N_LCM_Cat100.tif, watercontent = awc_mean_0_5_integer.tif,
+                                     eta = ETa_Apr_Oct_2003_2017_monthlyMean_integer.tif)
+glimpse(pctj)
+hist(pctj$humanfoot)
+hist(pctj$eta)
+hist(pctj$watercontent)
+# cool!
+
+## How do the distributions of enviro variables overlap for presence vs. abundance points?
+pctj = pctj %>% mutate(Point = factor(Point, levels = c("Presence", "Abundance")))
+pctj %>% ggplot(aes(humanfoot, fill=Point)) + geom_histogram(alpha=0.5) # wow!
+pctj %>% ggplot(aes(watercontent, fill=Point)) + geom_histogram(alpha=0.5)
+pctj %>% ggplot(aes(eta, fill=Point)) + geom_histogram(alpha=0.5)
+
+## What if we set some abundance thresholds?
+all = pctj %>% mutate(Value = "AllData")
+allabun = pctj %>% filter(Point=="Abundance") %>% mutate(Value="AllAbund")
+abun10 = pctj %>% filter(Cover > 10) %>% mutate(Value="Abund10")
+abun20 = pctj %>% filter(Cover > 20) %>% mutate(Value="Abund20")
+newpct = rbind(all, allabun, abun10, abun10, abun20)
+
+newpct = newpct %>% mutate(Value = factor(Value, levels = c("AllData", "AllAbund", "Abund10", "Abund20")))
+newpct %>% ggplot(aes(humanfoot, fill=Value)) + geom_histogram(alpha=0.7) +
+  ggtitle("Data set at 10% and 20% thresholds")
+newpct %>% ggplot(aes(watercontent, fill=Value)) + geom_histogram(alpha=0.7) +
+  ggtitle("Data set at 10% and 20% thresholds")
+newpct %>% ggplot(aes(eta, fill=Value)) + geom_histogram(alpha=0.7) +
+  ggtitle("Data set at 10% and 20% thresholds")
+
+## Two dimensional enviro space...?
+newpct %>% ggplot(aes(humanfoot, eta)) + geom_point()
+
