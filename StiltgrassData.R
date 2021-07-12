@@ -36,6 +36,13 @@ pct %>% ggplot(aes(Cover)) + geom_histogram(fill="steelblue2", color="black", bi
 # most measures are low, but handful of high cover measures too!
 quantile(pct$Cover)
 # 25% of dataset is above 37% cover - cool!
+# Export some files
+abund10 = pct %>% filter(Cover > 10)
+range(abund10$Cover)
+#write.csv(abund10, "mv_abund10.csv", row.names=F)
+abund20 = pct %>% filter(Cover > 20)
+range(abund20$Cover)
+#write.csv(abund20, "mv_abund20.csv", row.names=F)
 
 ## Map
 library(mapproj)
