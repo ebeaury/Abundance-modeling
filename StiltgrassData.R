@@ -215,3 +215,20 @@ pctj %>% filter(Point=="Abundance") %>% ggplot(aes(eta, as.numeric(Cover))) + ge
 pctj %>% filter(Point=="Abundance") %>% ggplot(aes(watercontent, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
 pctj %>% filter(Point=="Abundance") %>% ggplot(aes(treecover, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
 
+## Look at percentiles of cover data
+library(purrr)
+#install.packages("purrr")
+glimpse(pct$Cover)
+plot(ecdf(pct$Cover), xlab="Cover value", ylab="Percentile", main="Stiltgrass percentiles")
+percentiles = list(ecdf(pct$Cover))
+vals = pct %>% group_by(Cover) %>%
+  summarise(ecdf = list(ecdf(pct$Cover)))
+test = pct %>% inner_join(vals) %>%
+  mutate(percentile = map2_dbl(.x = ecdf, .y = Cover, .f = ~.x(.y)))
+head(test)
+test %>% ggplot(aes(percentile, Cover)) + geom_point() +
+  ylim(0,10)
+test %>% filter(percentile < 0.5) %>% 
+  ggplot(aes(Cover)) + geom_histogram()
+
+
