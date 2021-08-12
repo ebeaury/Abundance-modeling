@@ -274,6 +274,22 @@ pctj %>% filter(Point=="Abundance") %>% ggplot(aes(treecover, as.numeric(Cover))
 pctj %>% filter(Point=="Abundance") %>% ggplot(aes(ppt, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
 # terrible...
 
+## Percentiles
+library(purrr)
+glimpse(pct$Cover)
+plot(ecdf(pct$Cover), xlab="Cover value", ylab="Percentile", main="Ligustrum percentiles")
+percentiles = list(ecdf(pct$Cover))
+vals = pct %>% group_by(Cover) %>%
+  summarise(ecdf = list(ecdf(pct$Cover)))
+test = pct %>% inner_join(vals) %>%
+  mutate(percentile = map2_dbl(.x = ecdf, .y = Cover, .f = ~.x(.y)))
+head(test)
+test %>% ggplot(aes(percentile, Cover)) + geom_point() +
+  ylim(0,10)
+test %>% filter(percentile < 0.5) %>% 
+  ggplot(aes(Cover)) + geom_histogram()
+
+
 #
 #
 #
@@ -460,5 +476,18 @@ pctj %>% filter(Point=="Abundance") %>% ggplot(aes(treecover, as.numeric(Cover))
 pctj %>% filter(Point=="Abundance") %>% ggplot(aes(ppt, as.numeric(Cover))) + geom_point() + geom_smooth() # tail on the high end of values
 # so terrible lol
 
+## percentiles
+glimpse(pct$Cover)
+plot(ecdf(pct$Cover), xlab="Cover value", ylab="Percentile", main="Lespedeza percentiles")
+percentiles = list(ecdf(pct$Cover))
+vals = pct %>% group_by(Cover) %>%
+  summarise(ecdf = list(ecdf(pct$Cover)))
+test = pct %>% inner_join(vals) %>%
+  mutate(percentile = map2_dbl(.x = ecdf, .y = Cover, .f = ~.x(.y)))
+head(test)
+test %>% ggplot(aes(percentile, Cover)) + geom_point() +
+  ylim(0,10)
+test %>% filter(percentile < 0.5) %>% 
+  ggplot(aes(Cover)) + geom_histogram()
 
 
